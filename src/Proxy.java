@@ -1,3 +1,6 @@
+import javax.imageio.ImageIO;
+import javax.imageio.ImageReader;
+import java.awt.image.BufferedImage;
 import java.net.*;
 import java.io.*;
 import java.util.*;
@@ -36,48 +39,54 @@ public class Proxy extends Thread{
                     break;
                 }
             }
-
+            if(urlToCall.length() > 4 && !urlToCall.substring(0,4).equals("http")){
+                urlToCall= "http://" + urlToCall;
+            }
             try {
-                if(!urlToCall.substring(0,4).equals("http")){
-                    urlToCall= "http://" + urlToCall;
-                }
                 URL url = new URL(urlToCall);
-                HttpURLConnection con = (HttpURLConnection) url.openConnection();
-                con.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
-                con.setRequestProperty("Content-Language", "en-US");
-                con.setUseCaches(false);
-                con.setDoOutput(true);
-
-                InputStream is = con.getInputStream();
-                BufferedReader bufferResponse = new BufferedReader(new InputStreamReader(is));
-                StringBuilder response = new StringBuilder();
-
-                while ((responseLine = bufferResponse.readLine()) != null) {
-                    response.append(responseLine);
+                if((urlToCall.contains(".png")) || urlToCall.contains(".jpg") ||
+                        urlToCall.contains(".jpeg") || urlToCall.contains(".gif")){
+                    BufferedImage image = ImageIO.read(url);
+                    if(image != null) {
+                        String line = "HTTP/1.0 200 OK\n" +
+                                "Proxy-agent: ProxyServer/1.0\n" +
+                                "\r\n";
+                        out.write(line.getBytes());
+                        out.flush();
+                        ImageIO.write(image, urlToCall.substring(urlToCall.lastIndexOf(".")+1, urlToCall.length()), out);
+                    } else {
+                        String error = "HTTP/1.0 404 NOT FOUND\n" +
+                                "Proxy-agent: ProxyServer/1.0\n" +
+                                "\r\n";
+                        out.write(error.getBytes());
+                    }
+                }else{
+                    HttpURLConnection con = (HttpURLConnection) url.openConnection();
+                    con.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
+                    con.setRequestProperty("Content-Language", "en-US");
+                    con.setUseCaches(false);
+                    con.setDoOutput(true);
+                    InputStream is = con.getInputStream();
+                    BufferedReader bufferResponse = new BufferedReader(new InputStreamReader(is));
+                    StringBuilder response = new StringBuilder();
+                    while ((responseLine = bufferResponse.readLine()) != null) {
+                        response.append(responseLine);
+                    }
+                    logPrinter.println(" ");
+                    logPrinter.println("RESPONSE:");
+                    logPrinter.println(response.toString());
+                    String responseFinal = "HTTP/1.0 200 OK\n" + "Proxy-agent: ProxyServer/1.0\n" + "\r\n" + response.toString();
+                    out.write(responseFinal.getBytes());
                 }
-
-                logPrinter.println(" ");
-                logPrinter.println("RESPONSE:");
-                logPrinter.println(response.toString());
-
-                String responseFinal = "HTTP/1.0 200 OK\n" + "Proxy-agent: ProxyServer/1.0\n" + "\r\n" + response.toString();
-                out.write(responseFinal.getBytes());
                 out.flush();
-                if (is != null) is.close();
-
             } catch (Exception e) {
                 System.err.println("Exception: " + e);
-            }
-            finally {
+            } finally {
                 if (out != null) out.close();
                 if (in != null) in.close();
-                if (logPrinter != null) logPrinter.close();
-                if (socket != null) socket.close();
             }
-
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
-
 }

@@ -1,0 +1,8 @@
+<component name="ArtifactManager">
+  <artifact type="jar" name="fiddlerAcelerator:jar">
+    <output-path>$PROJECT_DIR$/out/artifacts/fiddlerAcelerator_jar</output-path>
+    <root id="archive" name="fiddlerAcelerator.jar">
+      <element id="module-output" name="fiddlerAcelerator" />
+    </root>
+  </artifact>
+</component>
