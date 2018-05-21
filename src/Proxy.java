@@ -1,15 +1,16 @@
 import java.net.*;
 import java.io.*;
 import java.util.*;
-import java.util.stream.*;
 
 public class Proxy extends Thread{
 
     private Socket socket;
+    private PrintWriter logPrinter;
 
-    public Proxy(Socket socket) {
+    public Proxy(Socket socket, PrintWriter logPrinter) {
         super("ProxyThread");
         this.socket = socket;
+        this.logPrinter = logPrinter;
     }
 
     public void run() {
@@ -17,19 +18,16 @@ public class Proxy extends Thread{
         try {
             DataOutputStream out = new DataOutputStream(socket.getOutputStream());
             BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-
-            String inputLine, responseLine;
+            String inputLine, responseLine, urlToCall = "";
             int cnt = 0;
 
-            String urlToCall = "";
-            System.out.println(" ");
-            System.out.println("REQUEST");
-
+            logPrinter.println(" ");
+            logPrinter.println("REQUEST:");
             while ((inputLine = in.readLine()) != " ") {
                 try {
                     StringTokenizer tok = new StringTokenizer(inputLine);
                     tok.nextToken();
-                    System.out.println(inputLine);
+                    logPrinter.println(inputLine);
                     if (cnt == 0) {
                         urlToCall = inputLine.substring(inputLine.indexOf(' ')+1,inputLine.indexOf(' ',inputLine.indexOf(' ')+1));
                     }
@@ -43,7 +41,6 @@ public class Proxy extends Thread{
                 if(!urlToCall.substring(0,4).equals("http")){
                     urlToCall= "http://" + urlToCall;
                 }
-
                 URL url = new URL(urlToCall);
                 HttpURLConnection con = (HttpURLConnection) url.openConnection();
                 con.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
@@ -53,28 +50,30 @@ public class Proxy extends Thread{
 
                 InputStream is = con.getInputStream();
                 BufferedReader bufferResponse = new BufferedReader(new InputStreamReader(is));
-
                 StringBuilder response = new StringBuilder();
 
                 while ((responseLine = bufferResponse.readLine()) != null) {
                     response.append(responseLine);
                 }
 
-                System.out.println(" ");
-                System.out.println("RESPONSE");
-                System.out.println(response.toString());
+                logPrinter.println(" ");
+                logPrinter.println("RESPONSE:");
+                logPrinter.println(response.toString());
 
                 String responseFinal = "HTTP/1.0 200 OK\n" + "Proxy-agent: ProxyServer/1.0\n" + "\r\n" + response.toString();
                 out.write(responseFinal.getBytes());
-
                 out.flush();
-                out.close();
-                socket.close();
+                if (is != null) is.close();
 
             } catch (Exception e) {
                 System.err.println("Exception: " + e);
             }
-
+            finally {
+                if (out != null) out.close();
+                if (in != null) in.close();
+                if (logPrinter != null) logPrinter.close();
+                if (socket != null) socket.close();
+            }
 
         } catch (IOException e) {
             e.printStackTrace();
